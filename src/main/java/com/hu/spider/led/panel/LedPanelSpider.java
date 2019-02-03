@@ -47,10 +47,22 @@ public class LedPanelSpider implements Runnable {
 		}
 
 		try {
+			//测试用.
+//			System.out.println("getting content from : " + link);
+			
 			this.html = HttpUtils.getHtml(this.link);
+			
+			//测试用
+//			System.out.println(html);
+			
 			if (StringUtils.isNotBlank(this.html)) {
 				// if the crawl depth belongs to [0~4], then keep crawling deeper.
 				if (curLevel + 1 > 0 && curLevel + 1 < LedPanelSpider.MAX_LEVEL) {
+					
+					//测试看用
+//					System.out.print("curLevel: " + curLevel);
+//					System.out.println(" spawning..." + link);
+					
 					// get and filter for the links belong to the given host (or link's host)
 					this.spawn(this.link, this.html, curLevel + 1, this.allLinks);
 				}
@@ -67,6 +79,10 @@ public class LedPanelSpider implements Runnable {
 	private void verifyAndExtract(String link, String html) {
 		// 1.verify the html content has the required product parameters information.
 		if (TextVerifier.getInstance().verifiy(html)) {
+			
+			//测试看用。
+//			System.out.println("verified true: " + link);
+			
 			// 2. If step one true, then check if there is such given link existing in the
 			// database..
 			LedLinkExample lle = new LedLinkExample();
@@ -74,6 +90,9 @@ public class LedPanelSpider implements Runnable {
 			// if the count > 0, then it means this link already existing in the database.
 			if (lls.countByExample(lle) > 0) {
 				if (this.update == false) {
+					
+					//测试用看用
+					System.out.println("already existing in database, omited: " + link);
 					return;
 				} else {
 					
@@ -91,6 +110,9 @@ public class LedPanelSpider implements Runnable {
 			// otherwise the link and the content is not existing in the database which need
 			// to be saved.
 			save(link, html);
+		}else {
+			//测试用看
+//			System.out.println("verifiled falied: " + link);
 		}
 	}
 
@@ -111,23 +133,39 @@ public class LedPanelSpider implements Runnable {
 		String title = Jsoup.parse(html).getElementsByTag("title").text();
 		LedLink ledLink = new LedLink(link, fileName, title);
 		lls.insert(ledLink);
+		
+		System.out.println("saved link: " + link);
 	}
 
 	// based on the given host name to filter out the links in the given string
 	// content, and spawn more spider threads.
 	private void spawn(String host, String content, int curLevel, Set<String> allLinks)
 			throws ClientProtocolException, IOException, InterruptedException {
+		
+		//测试用看
+//		System.out.println("spawning, level:  " + curLevel);
+//		System.out.println("link: " + host);
+		
 		Set<String> domainLinks = HttpUtils.filterDomainLinks(host, content);
 		for (String domainLink : domainLinks) {
+			//测试用看。
+//			System.out.println("domainLink: " + domainLink);
+			
 			if (!allLinks.contains(domainLink)) {
 				synchronized (Object.class) {
 					allLinks.add(domainLink);
 				}
 				// 休眠50 ms to comfort the host server?
 				Thread.sleep(50);
+				
+				//测试用看.
+//				System.out.println("creating new spider for: " + domainLink);
+				
 				new Thread(new LedPanelSpider(domainLink, curLevel, allLinks)).start();
 			} else {
-				System.out.println(domainLink + " already existing.. Parsing omited~~~");
+				
+				//测试看用
+//				System.out.println(domainLink + " already existing.. Parsing omited~~~");
 			}
 		}
 
