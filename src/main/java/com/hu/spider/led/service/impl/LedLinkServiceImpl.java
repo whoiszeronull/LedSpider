@@ -31,67 +31,110 @@ public class LedLinkServiceImpl implements LedLinkService{
 	}
 	
 	@Override
-	public void save(LedLink ledLink) {
+	public long countByExample(LedLinkExample example) {
 		try(SqlSession openSession = sqlSessionFactory.openSession();){
 			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
-			mapper.insert(ledLink);
-			openSession.commit();
+			long count;
+			count = mapper.countByExample(example);
+			return count;
 		}
 	}
 
 	@Override
-	public long countByExample(LedLinkExample example) {
-		return 0;
-	}
-
-	@Override
 	public int deleteByExample(LedLinkExample example) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.deleteByExample(example);
+			return count;
+		}
 	}
 
 	@Override
 	public int deleteByPrimaryKey(Integer id) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.deleteByPrimaryKey(id);
+			return count;
+		}
 	}
 
 	@Override
 	public int insert(LedLink record) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.insert(record);
+			openSession.commit();
+			return count;
+		}
 	}
 
 	@Override
 	public int insertSelective(LedLink record) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.insertSelective(record);
+			return count;
+		}
 	}
 
 	@Override
 	public List<LedLink> selectByExample(LedLinkExample example) {
-		return null;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			return mapper.selectByExample(example);
+		}
 	}
 
 	@Override
 	public LedLink selectByPrimaryKey(Integer id) {
-		return null;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			return mapper.selectByPrimaryKey(id);
+		}
 	}
 
 	@Override
 	public int updateByExampleSelective(LedLink record, LedLinkExample example) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.updateByExampleSelective(record, example);
+			return count;
+		}
 	}
 
 	@Override
 	public int updateByExample(LedLink record, LedLinkExample example) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.updateByExample(record, example);
+			return count;
+		}
 	}
 
 	@Override
 	public int updateByPrimaryKeySelective(LedLink record) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.updateByPrimaryKeySelective(record);
+			return count;
+		}
 	}
 
 	@Override
 	public int updateByPrimaryKey(LedLink record) {
-		return 0;
+		try(SqlSession openSession = sqlSessionFactory.openSession();){
+			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
+			int count;
+			count = mapper.updateByPrimaryKey(record);
+			return count;
+		}
 	}
 
 }

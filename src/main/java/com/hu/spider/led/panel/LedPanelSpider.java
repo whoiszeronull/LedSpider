@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.jsoup.Jsoup;
 
+import com.hu.parser.ledparser.verifier.impl.TextVerifier;
 import com.hu.spider.led.service.LedLinkService;
 import com.hu.spider.led.service.impl.LedLinkServiceImpl;
 import com.hu.spider.led.vo.LedLink;
@@ -20,6 +21,14 @@ public class LedPanelSpider implements Runnable {
 	private String html;
 	private int curLevel;
 	private Set<String> allLinks;
+
+	// the switch that determain whether to save the link and the html content
+	// belongs to this link to the database which already exisitng in the database.
+	// true: means to update(replace) the html content which already exsiting in the
+	// databse.
+	// false: means not to do anything, if the link and the content already
+	// exisiting in the databse. Default is false.
+	private boolean update = false;
 
 	private LedLinkService lls = new LedLinkServiceImpl();
 
@@ -39,45 +48,87 @@ public class LedPanelSpider implements Runnable {
 
 		try {
 			this.html = HttpUtils.getHtml(this.link);
-			if(StringUtils.isNotBlank(this.html)) {
-				// 1.verify the html content has the required product parameters information.
-				
-				// 2.If step one true, then save the info the the database.
-				String title = Jsoup.parse(this.html).getElementsByTag("title").text();
-				LedLink ledLink = new LedLink(this.link, UUID.randomUUID().toString(), title);
-				System.out.println(ledLink.toString());
-				lls.save(ledLink);
-				this.spawn(this.link, this.html, curLevel, this.allLinks);
-				
+			if (StringUtils.isNotBlank(this.html)) {
+				// if the crawl depth belongs to [0~4], then keep crawling deeper.
+				if (curLevel + 1 > 0 && curLevel + 1 < LedPanelSpider.MAX_LEVEL) {
+					// get and filter for the links belong to the given host (or link's host)
+					this.spawn(this.link, this.html, curLevel + 1, this.allLinks);
+				}
+				verifyAndExtract(this.link, this.html);
 			}
-
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
-		} 
+		}
+	}
+
+	// verify the given html content and extract and save the information if there
+	// is.
+	private void verifyAndExtract(String link, String html) {
+		// 1.verify the html content has the required product parameters information.
+		if (TextVerifier.getInstance().verifiy(html)) {
+			// 2. If step one true, then check if there is such given link existing in the
+			// database..
+			LedLinkExample lle = new LedLinkExample();
+			lle.createCriteria().andLinkEqualTo(link);
+			// if the count > 0, then it means this link already existing in the database.
+			if (lls.countByExample(lle) > 0) {
+				if (this.update == false) {
+					return;
+				} else {
+					
+					//get the record based on the given existing link and update the record.
+					LedLink record = lls.selectByExample(lle).get(0);
+					// saveStringToFile
+					String fileName = saveStringToFile(html);
+					String title = Jsoup.parse(html).getElementsByTag("title").text();
+					record.setFileName(fileName);
+					record.setTitle(title);
+					lls.updateByExample(record, lle);
+				}
+			}
+
+			// otherwise the link and the content is not existing in the database which need
+			// to be saved.
+			save(link, html);
+		}
+	}
+
+	// save the string to a file, and return the file name;
+	private String saveStringToFile(String html) {
+		
+		//测试用下看看。
+		return UUID.randomUUID().toString();
+	}
+
+	// save the html content to a text file, and save the link info with corresponding filename and title
+	// info to the database.
+	private void save(String link, String html) {
+		// 1.save html content to a text file.
+		String fileName = saveStringToFile(html);
+		
+		// 2.save LedLink info to the database.
+		String title = Jsoup.parse(html).getElementsByTag("title").text();
+		LedLink ledLink = new LedLink(link, fileName, title);
+		lls.insert(ledLink);
 	}
 
 	// based on the given host name to filter out the links in the given string
 	// content, and spawn more spider threads.
 	private void spawn(String host, String content, int curLevel, Set<String> allLinks)
 			throws ClientProtocolException, IOException, InterruptedException {
-		
-		if (curLevel >= 0 && curLevel < LedPanelSpider.MAX_LEVEL) {
-			Set<String> domainLinks = HttpUtils.filterDomainLinks(host, content);
-			for (String domainLink : domainLinks) {
-				if (!allLinks.contains(domainLink)) {
-					synchronized (Object.class) {
-						allLinks.add(domainLink);
-					}
-					// 休眠50 ms to comfort the host server?
-					Thread.sleep(50);
-					new Thread(new LedPanelSpider(domainLink, curLevel + 1, allLinks)).start();
-				} else {
-					System.out.println(domainLink + " already existing.. Parsing omited~~~");
+		Set<String> domainLinks = HttpUtils.filterDomainLinks(host, content);
+		for (String domainLink : domainLinks) {
+			if (!allLinks.contains(domainLink)) {
+				synchronized (Object.class) {
+					allLinks.add(domainLink);
 				}
+				// 休眠50 ms to comfort the host server?
+				Thread.sleep(50);
+				new Thread(new LedPanelSpider(domainLink, curLevel, allLinks)).start();
+			} else {
+				System.out.println(domainLink + " already existing.. Parsing omited~~~");
 			}
-		} else {
-			System.out.println("level " + curLevel + " has exceed the bounds!");
 		}
 
 	}
