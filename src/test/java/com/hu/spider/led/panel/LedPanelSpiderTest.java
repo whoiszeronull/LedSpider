@@ -1,4 +1,4 @@
-package com.hu.spider.led;
+package com.hu.spider.led.panel;
 
 import java.util.HashSet;
 import java.util.Set;
