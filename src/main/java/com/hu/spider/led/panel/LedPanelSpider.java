@@ -40,7 +40,7 @@ public class LedPanelSpider implements Runnable {
 		try {
 			this.html = HttpUtils.getHtml(this.link);
 			if(StringUtils.isNotBlank(this.html)) {
-				// 1.varify the html content has the required product parameters information.
+				// 1.verify the html content has the required product parameters information.
 				
 				// 2.If step one true, then save the info the the database.
 				String title = Jsoup.parse(this.html).getElementsByTag("title").text();
