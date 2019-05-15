@@ -2,8 +2,8 @@ package com.hu.spider.led.panel;
 
 import java.util.HashSet;
 import java.util.Set;
-
-import com.hu.spider.led.panel.LedPanelSpider;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class LedPanelSpiderTest {
 
@@ -24,17 +24,22 @@ public class LedPanelSpiderTest {
 //	private static String root = "http://www.createled.cn/";
 //	private static String root = "https://www.yaham.com/pro_list.html?#c28"; // not succeed.
 //	private static String root = "http://www.newstar-led.com/";
-//	private static String root = "http://www.liantronics.com/index.html";
+	private static String root = "http://www.liantronics.com/index.html";
 //	private static String root = "http://www.vteam-lighting.cn/"; // not succeed.
 //	private static String root = "http://www.vteam-lighting.cn/ecodot.html";
-	private static String root = "http://www.nexnovo.com/";
+//	private static String root = "http://www.nexnovo.com/";
 	
 	private static int level = 0;
 	private static Set<String> allLinks = new HashSet<>();
 
 	public static void main(String[] args) {
 		LedPanelSpider lps = new LedPanelSpider(root, level, allLinks);
-		new Thread(lps).start();
+		
+		ExecutorService es = Executors.newCachedThreadPool();
+		
+		LedPanelSpider.setEs(es);
+		LedPanelSpider.getEs().execute(lps);
+		
 	}
 
 }
