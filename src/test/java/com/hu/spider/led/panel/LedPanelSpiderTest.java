@@ -11,7 +11,7 @@ public class LedPanelSpiderTest {
 //	private static String root = "http://www.szlamp.cn/";
 //	private static String root = "http://47.99.14.21/ProductInfoCategory?categoryId=90828";
 //	private static String root = "http://47.99.14.21/productinfo/324082.html";
-//	private static String root = "http://www.mrled.cn/en/Product/57.html";
+	private static String root = "http://www.mrled.cn/en/Product/57.html";
 //	private static String root = "https://www.yes-led.com/en/displayproduct.html?proID=2614608&proTypeID=164392"; // not succeed.
 //	private static String root = "https://www.barco.com/zh-CN/";
 //	private static String root = "https://www.barco.com/en/"; //not succeed!
@@ -24,7 +24,7 @@ public class LedPanelSpiderTest {
 //	private static String root = "http://www.createled.cn/";
 //	private static String root = "https://www.yaham.com/pro_list.html?#c28"; // not succeed.
 //	private static String root = "http://www.newstar-led.com/";
-	private static String root = "http://www.liantronics.com/index.html";
+//	private static String root = "http://www.liantronics.com/index.html";
 //	private static String root = "http://www.vteam-lighting.cn/"; // not succeed.
 //	private static String root = "http://www.vteam-lighting.cn/ecodot.html";
 //	private static String root = "http://www.nexnovo.com/";

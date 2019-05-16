@@ -1,9 +1,13 @@
 package com.hu.spider.led.panel;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.jsoup.Jsoup;
@@ -31,7 +35,7 @@ public class LedPanelSpider implements Runnable {
 	// databse.
 	// false: means not to do anything, if the link and the content already
 	// exisiting in the databse. Default is false.
-	private boolean update = false;
+	private boolean update = true;
 
 	private static LedLinkService lls = new LedLinkServiceImpl();
 
@@ -87,21 +91,38 @@ public class LedPanelSpider implements Runnable {
 			// database..
 			LedLinkExample lle = new LedLinkExample();
 			lle.createCriteria().andLinkEqualTo(link);
+			
 			// if the count > 0, then it means this link already existing in the database.
 			if (lls.countByExample(lle) > 0) {
-				if (this.update == false) {
+				if (update == false) {
 					// 测试用看用
-					System.out.println("already existing in database, omited: " + link);
+					System.out.println("UPDATE disabled. record already existing in database, omited: " + link);
 					return;
 				} else {
 					// get the record based on the given existing link and update the record.
 					LedLink record = lls.selectByExample(lle).get(0);
+					
+					System.out.println("record: " + record.toString());
+					
 					// saveStringToFile
-					String fileName = generateFileName(record.getFileName());
+					String filePath = generateFilePath(link);
+					
+					try {
+						FileUtils.writeStringToFile(new File(filePath), html, "utf-16", false);
+					} catch (IOException e) {
+						e.printStackTrace();
+						throw new RuntimeException(e);
+					}
+					
 					String title = Jsoup.parse(html).getElementsByTag("title").text();
-					record.setFileName(fileName);
+					record.setFileName(filePath);
 					record.setTitle(title);
-					lls.updateByExample(record, lle);
+					
+					System.out.println("going to update record: " + record.toString());
+					
+					lls.updateByExample(record, lle);  //?? probleam?
+//					lls.updateByExampleSelective(record, lle);
+//					lls.updateByPrimaryKey(record);
 				}
 			}
 
@@ -116,29 +137,51 @@ public class LedPanelSpider implements Runnable {
 
 	// save the html content to a text file, and save the link info with
 	// corresponding filename and title
-	// info to the database.
+	// info to the database. The dictory for saving files are:
+	// hostShortName/linkLast(index). Here (index) means the number of the files
+	// with same name linkLast. For example, if the link is :
+	// https://www.abc.com/fantasy.html?id=10. Then the directory and file name will
+	// be: products/abc/fantasy.html?id=10
 	private void save(String link, String html) {
 		// 1.save html content to a text file.
-		String fileName = generateFileName();
+		String filePath = generateFilePath(link);
 
+		File text = new File(filePath);
+		
+		try {
+			FileUtils.writeStringToFile(text, html, "utf-16");
+		} catch (IOException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+		
 		// 2.save LedLink info to the database.
 		String title = Jsoup.parse(html).getElementsByTag("title").text();
-		LedLink ledLink = new LedLink(link, fileName, title);
+		LedLink ledLink = new LedLink(link, filePath, title);
 		lls.insert(ledLink);
 
 		System.out.println("saved link: " + link);
 	}
 
-	// generate the fileName in the format of :
-	private String generateFileName() {
-		return null;
-	}
-
-	// based on the already existing oldFileName to generate the new fileName
-	// if the file with oldFileName existing, then add "deleted" as post fix to the
-	// file, and add ??? as new post fix to the newFilename and return it;
-	private String generateFileName(String oldFileName) {
-		return null;
+//	The dictory for saving files are:
+	// hostShortName/linkLast(index). Here (index) means the number of the files
+	// with same name linkLast. For example, if the link is :
+	// https://www.abc.com/fantasy.html?id=10. Then the directory and file name will
+	// be: products/abc/fantasy.html?id=10
+	private String generateFilePath(String link) {
+		
+		String host;
+		try {
+			host = new URL(link).getHost();
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+		
+		String[] splits = link.split("/");
+		String fileName = splits[splits.length-1];
+		
+		return  "products/" + host + "/" + fileName;
 	}
 
 	// based on the given host name to filter out the links in the given string
