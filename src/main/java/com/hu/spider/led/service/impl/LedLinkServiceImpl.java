@@ -103,6 +103,8 @@ public class LedLinkServiceImpl implements LedLinkService{
 			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
 			int count;
 			count = mapper.updateByExampleSelective(record, example);
+			//don't forget to commit.
+			openSession.commit();
 			return count;
 		}
 	}
@@ -113,6 +115,8 @@ public class LedLinkServiceImpl implements LedLinkService{
 			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
 			int count;
 			count = mapper.updateByExample(record, example);
+			//don't forget to commit.
+			openSession.commit();
 			return count;
 		}
 	}
@@ -133,6 +137,8 @@ public class LedLinkServiceImpl implements LedLinkService{
 			LedLinkMapper mapper = openSession.getMapper(LedLinkMapper.class);
 			int count;
 			count = mapper.updateByPrimaryKey(record);
+			//don't forget to commit.
+			openSession.commit();
 			return count;
 		}
 	}
