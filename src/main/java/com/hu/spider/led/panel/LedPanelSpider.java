@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
@@ -26,6 +28,10 @@ public class LedPanelSpider implements Runnable {
 	private int curLevel;
 	private Set<String> allLinks;
 
+	// spider operate mode, spider will act differently according to opeMode,
+	// default mode is update the links sotred in db for missing files.
+	private OpeMode opeMode;;
+
 	// the thread pool for running spiders
 	private static ExecutorService es;
 
@@ -35,17 +41,18 @@ public class LedPanelSpider implements Runnable {
 	// databse.
 	// false: means not to do anything, if the link and the content already
 	// exisiting in the databse. Default is false.
-	private boolean update = true;
+//	private boolean update = true;
 
 	private static LedLinkService lls = new LedLinkServiceImpl();
 
 	public static final int MAX_LEVEL = 5;
 
-	public LedPanelSpider(String link, int level, Set<String> alllinks) {
+	public LedPanelSpider(String link, int level, OpeMode opeMode, Set<String> alllinks) {
 		super();
 		this.link = link;
 		this.curLevel = level;
 		this.allLinks = alllinks;
+		this.opeMode = opeMode;
 	}
 
 	public LedPanelSpider() {
@@ -53,13 +60,28 @@ public class LedPanelSpider implements Runnable {
 
 	@Override
 	public void run() {
-		if (StringUtils.isBlank(this.link)) {
-			System.out.println("input link error!!");
-			return;
+
+		switch (opeMode) {
+		case CRAWL_UPDATE_ALL_LOGICALLY:
+			crawlUpdateAllLogically();
+			break;
+		case CRAWL_UPDATE_MISSING_ONE:
+			crawlUpdateMissingOne();
+			break;
+		case UPDATE_MISSING_ONE_ONLY:
+			updateMissingOneOnly();
+			break;
+		default:
+			System.out.println("Unknown operation mode!!");
 		}
 
-		if (this.curLevel < 0 || this.curLevel > 5) {
-			System.out.println("input level error!!");
+	}
+
+	private void crawlUpdateAllLogically() {
+
+		if (this.curLevel < 0 || this.curLevel > MAX_LEVEL) {
+			System.out.println(
+					"Crawl level out of bounds!! Limit is :[0-" + MAX_LEVEL + "]," + "current level=:" + curLevel);
 			return;
 		}
 
@@ -67,72 +89,103 @@ public class LedPanelSpider implements Runnable {
 
 			this.html = HttpUtils.getHtml(this.link);
 
-			if (StringUtils.isNotBlank(this.html)) {
-				// if the crawl depth belongs to [0~4], then keep crawling deeper.
-				if (curLevel + 1 > 0 && curLevel + 1 < LedPanelSpider.MAX_LEVEL) {
-					// get and filter for the links belong to the given host (or link's host)
-					this.spawn(this.link, this.html, curLevel + 1, this.allLinks);
-				}
-				verifyAndExtract(this.link, this.html);
+			if (curLevel + 1 < MAX_LEVEL) {
+				this.spawn(this.link, this.html, curLevel + 1, this.allLinks);
 			}
+
+			if (verifyContent(html)) {
+				if (isLinkExisting(link)) {
+					updateExistingRecord(link, html);
+				} else {
+					insertLedLinkRecord(link, html);
+				}
+			}
+
 		} catch (Exception e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
 	}
 
-	// verify the given html content and extract and save the information if there
-	// is.
-	private void verifyAndExtract(String link, String html) {
-		// 1.verify the html content has the required product parameters information.
-		if (TextVerifier.getInstance().verifiy(html)) {
+	private void crawlUpdateMissingOne() {
+	}
 
-			// 2. If step one true, then check if there is such given link existing in the
-			// database..
-			LedLinkExample lle = new LedLinkExample();
-			lle.createCriteria().andLinkEqualTo(link);
-			
-			// if the count > 0, then it means this link already existing in the database.
-			if (lls.countByExample(lle) > 0) {
-				if (update == false) {
-					// 测试用看用
-					System.out.println("UPDATE disabled. record already existing in database, omited: " + link);
-					return;
-				} else {
-					// get the record based on the given existing link and update the record.
-					LedLink record = lls.selectByExample(lle).get(0);
-					
-					System.out.println("record: " + record.toString());
-					
-					// saveStringToFile
-					String filePath = generateFilePath(link);
-					
-					try {
-						FileUtils.writeStringToFile(new File(filePath), html, "utf-16", false);
-					} catch (IOException e) {
-						e.printStackTrace();
-						throw new RuntimeException(e);
-					}
-					
-					String title = Jsoup.parse(html).getElementsByTag("title").text();
-					record.setFileName(filePath);
-					record.setTitle(title);
-					
-					System.out.println("going to update record: " + record.toString());
-					
-					lls.updateByExample(record, lle);  //?? probleam?
-//					lls.updateByExampleSelective(record, lle);
-//					lls.updateByPrimaryKey(record);
+	private void updateMissingOneOnly() {
+	}
+
+	private boolean verifyContent(String html) {
+		return TextVerifier.getInstance().verifiy(html);
+	}
+
+	// to check whether the link is existing in the dababase or not.
+	private boolean isLinkExisting(String link) {
+		// Check if there is such given link existing in the
+		// database..
+		LedLinkExample lle = new LedLinkExample();
+		lle.createCriteria().andLinkEqualTo(link);
+		return lls.countByExample(lle) > 0;
+	}
+
+	private void updateExistingRecord(String link, String html) {
+
+		// store the html content and return the stored file path
+		String filePath = storeContentToFile(link, html);
+
+		LedLinkExample lle = new LedLinkExample();
+		lle.createCriteria().andLinkEqualTo(link);
+
+		// get the record based on the given existing link and update the record.
+		LedLink record = lls.selectByExample(lle).get(0);
+
+		String title = Jsoup.parse(html).getElementsByTag("title").text();
+		record.setFileName(filePath);
+		record.setTitle(title);
+
+		lls.updateByExample(record, lle);
+
+		System.out.println("updated existing record: " + record.toString());
+
+	}
+
+	// save the new records and update the existing records
+	private void saveAndUpdate(String link, String html) {
+
+		// Check if there is such given link existing in the
+		// database..
+		LedLinkExample lle = new LedLinkExample();
+		lle.createCriteria().andLinkEqualTo(link);
+
+		// if the count > 0, then it means this link already existing in the database.
+		if (lls.countByExample(lle) > 0) {
+			if (opeMode == OpeMode.UPDATE_OMIT) {
+				// 测试用看用
+				System.out.println("UPDATE disabled. record already existing in database, omited: " + link);
+				return;
+			} else {
+				// get the record based on the given existing link and update the record.
+				LedLink record = lls.selectByExample(lle).get(0);
+
+				// saveStringToFile
+				String filePath = generateFilePath(link);
+
+				try {
+					FileUtils.writeStringToFile(new File(filePath), html, "utf-16", false);
+				} catch (IOException e) {
+					e.printStackTrace();
+					throw new RuntimeException(e);
 				}
-			}
 
-			// if the link and the content is not existing in the database then need
-			// to be saved.
-			save(link, html);
-		} else {
-			// 测试用看
-//			System.out.println("verifiled falied: " + link);
+				String title = Jsoup.parse(html).getElementsByTag("title").text();
+				record.setFileName(filePath);
+				record.setTitle(title);
+
+				lls.updateByExample(record, lle);
+			}
 		}
+
+		// if the link and the content is not existing in the database then need
+		// to be saved.
+		insertLedLinkRecord(link, html);
 	}
 
 	// save the html content to a text file, and save the link info with
@@ -141,47 +194,57 @@ public class LedPanelSpider implements Runnable {
 	// hostShortName/linkLast(index). Here (index) means the number of the files
 	// with same name linkLast. For example, if the link is :
 	// https://www.abc.com/fantasy.html?id=10. Then the directory and file name will
-	// be: products/abc/fantasy.html?id=10
-	private void save(String link, String html) {
-		// 1.save html content to a text file.
-		String filePath = generateFilePath(link);
+	// be: products/abc/fantasy.html?id=10-YYMMdd
+	private void insertLedLinkRecord(String link, String html) {
 
+		String filePath = storeContentToFile(link, html);
+
+		String title = Jsoup.parse(html).getElementsByTag("title").text();
+		LedLink ledLink = new LedLink(link, filePath, title);
+		lls.insert(ledLink);
+
+		System.out.println("inserted record: " + ledLink.toString());
+
+	}
+
+	// store the html content to the file by using regular naming procedure and
+	// return the file path
+	private String storeContentToFile(String link, String html) {
+		String filePath = generateFilePath(link);
 		File text = new File(filePath);
-		
 		try {
 			FileUtils.writeStringToFile(text, html, "utf-16");
 		} catch (IOException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
-		
-		// 2.save LedLink info to the database.
-		String title = Jsoup.parse(html).getElementsByTag("title").text();
-		LedLink ledLink = new LedLink(link, filePath, title);
-		lls.insert(ledLink);
-
-		System.out.println("saved link: " + link);
+		return filePath;
 	}
 
-//	The dictory for saving files are:
+	private String addPostFixDate(String filePath) {
+		SimpleDateFormat sdf = new SimpleDateFormat("-yyMMdd");
+		String date = sdf.format(new Date());
+		return filePath + date;
+	}
+
+	// The dictory for saving files are:
 	// hostShortName/linkLast(index). Here (index) means the number of the files
 	// with same name linkLast. For example, if the link is :
 	// https://www.abc.com/fantasy.html?id=10. Then the directory and file name will
-	// be: products/abc/fantasy.html?id=10
+	// be: products/abc/fantasy.html?id=10-yyMMdd
 	private String generateFilePath(String link) {
-		
 		String host;
+
 		try {
 			host = new URL(link).getHost();
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
-		
+
 		String[] splits = link.split("/");
-		String fileName = splits[splits.length-1];
-		
-		return  "products/" + host + "/" + fileName;
+		String fileName = splits[splits.length - 1];
+		return addPostFixDate("products/" + host + "/" + fileName);
 	}
 
 	// based on the given host name to filter out the links in the given string
@@ -201,7 +264,7 @@ public class LedPanelSpider implements Runnable {
 
 //				new Thread(new LedPanelSpider(domainLink, curLevel, allLinks)).start();
 				// put the new spider into the pool for running
-				LedPanelSpider.getEs().execute(new LedPanelSpider(domainLink, curLevel, allLinks));
+				LedPanelSpider.getEs().execute(new LedPanelSpider(domainLink, curLevel, this.opeMode, allLinks));
 
 			} else {
 
@@ -254,6 +317,14 @@ public class LedPanelSpider implements Runnable {
 
 	public static void setEs(ExecutorService es) {
 		LedPanelSpider.es = es;
+	}
+
+	public OpeMode getOpeMode() {
+		return opeMode;
+	}
+
+	public void setOpeMode(OpeMode opeMode) {
+		this.opeMode = opeMode;
 	}
 
 }

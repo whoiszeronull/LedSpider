@@ -5,6 +5,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import org.junit.Test;
+
 public class LedPanelSpiderTest {
 
 	private static String root = "http://www.desayopto.cn/m5.html";
@@ -28,18 +30,20 @@ public class LedPanelSpiderTest {
 //	private static String root = "http://www.vteam-lighting.cn/"; // not succeed.
 //	private static String root = "http://www.vteam-lighting.cn/ecodot.html";
 //	private static String root = "http://www.nexnovo.com/";
-	
+
 	private static int level = 0;
 	private static Set<String> allLinks = new HashSet<>();
 
+	//要用mian 方法才能运行起来，不能用JUNIT测试方法。
 	public static void main(String[] args) {
-		LedPanelSpider lps = new LedPanelSpider(root, level, allLinks);
 		
+		LedPanelSpider lps = new LedPanelSpider(root, level,OpeMode.CRAWL_UPDATE_ALL_LOGICALLY, allLinks);
+
 		ExecutorService es = Executors.newCachedThreadPool();
-		
+
 		LedPanelSpider.setEs(es);
 		LedPanelSpider.getEs().execute(lps);
-		
+
 	}
 
 }
