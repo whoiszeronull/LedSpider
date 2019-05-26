@@ -82,12 +82,24 @@ public class LedPanelSpider implements Runnable {
 			}
 			break;
 
+		// no paging yet, need to do by paging in future. 20190526.
 		case UPDATE_ALL_EXISTING_RECORDS:
-			updateAllExistingRecords();
+			try {
+				updateAllExistingRecords();
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
 			break;
-			
+
 		case UPDATE_MISSING_ONE_ONLY:
-			updateMissingOneOnly();
+			// no paging yet, need to do by paging in future. 20190526.
+			try {
+				updateMissingOneOnly();
+			} catch (IOException e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
 			break;
 
 		default:
@@ -97,12 +109,24 @@ public class LedPanelSpider implements Runnable {
 	}
 
 	/**
-	 * 1.scan the database for each ledLink record.
-	 * 2.download the webpage file from the existing link;
-	 * 3.store the file to the products/hostname/pageformatted name, and return the filepath.
-	 * 4.update the existing ledLink record based on the new filename(filePath)
+	 * 1.scan the database for each ledLink record. 2.download the webpage file from
+	 * the existing link; 3.store the file to the products/hostname/pageformatted
+	 * name, and return the filepath. 4.update the existing ledLink record based on
+	 * the new filename(filePath)
+	 * 
+	 * @throws IOException
+	 * @throws ClientProtocolException
 	 */
-	private void updateAllExistingRecords() {
+	private void updateAllExistingRecords() throws ClientProtocolException, IOException {
+		// pageing is not done yet. need to do in future.
+
+		LedLinkExample lle = new LedLinkExample();
+		lle.createCriteria().andLinkIsNotNull();
+
+		List<LedLink> records = lls.selectByExample(lle);
+		for (LedLink ledLink : records) {
+			updateExistingRecord(ledLink);
+		}
 	}
 
 	private void crawlUpdateAllLogically() throws ClientProtocolException, IOException, InterruptedException {
@@ -130,7 +154,7 @@ public class LedPanelSpider implements Runnable {
 		ensureCrawlLevel();
 
 		html = HttpUtils.getHtml(link);
-		
+
 		// 1.Get record from database based on the link info for checking.
 		LedLink record;
 		if ((record = getLedLinkRecord(link)) != null) {
@@ -139,7 +163,7 @@ public class LedPanelSpider implements Runnable {
 			// not, if not then download the webpage file and store the file and update the
 			// ledLink .
 			if (!(new File(record.getFileName()).exists())) {
-				if(verifyContent(html)) {
+				if (verifyContent(html)) {
 					updateExistingRecordThruLink(link, html);
 				}
 			}
@@ -147,7 +171,7 @@ public class LedPanelSpider implements Runnable {
 			// 3.If the link record not existing, then download the data file and strored
 			// and update the ledLink record.
 			// store the html content and return the stored file path
-			if(verifyContent(html)) {
+			if (verifyContent(html)) {
 				insertLedLinkRecord(link, html);
 			}
 		}
@@ -175,7 +199,18 @@ public class LedPanelSpider implements Runnable {
 		return null;
 	}
 
-	private void updateMissingOneOnly() {
+	private void updateMissingOneOnly() throws ClientProtocolException, IOException {
+		// pageing is not done yet. need to do in future.
+
+		LedLinkExample lle = new LedLinkExample();
+		lle.createCriteria().andLinkIsNotNull();
+
+		List<LedLink> records = lls.selectByExample(lle);
+		for (LedLink ledLink : records) {
+			if(!(new File(ledLink.getFileName()).exists())) {
+				updateExistingRecord(ledLink);
+			}
+		}
 	}
 
 	private boolean verifyContent(String html) {
@@ -233,9 +268,9 @@ public class LedPanelSpider implements Runnable {
 
 		String title = Jsoup.parse(html).getElementsByTag("title").text();
 		LedLink ledLink = new LedLink(link, filePath, title);
-		
+
 		System.out.println("going to insert new ledlink record: " + ledLink.toString());
-		
+
 		lls.insert(ledLink);
 
 		System.out.println("inserted record: " + ledLink.toString());
@@ -410,24 +445,34 @@ public class LedPanelSpider implements Runnable {
 //			insertLedLinkRecord(link, html);
 //		}
 
-//	private void updateExistingRecordFile(LedLink record) throws ClientProtocolException, IOException {
-//		String html2;
-//		String link2 = record.getLink();
-//
-//		html2 = HttpUtils.getHtml(link2);
-//
-//		String filePath = storeContentToFile(link2, html2);
-//		record.setFileName(filePath);
-//
-//		String title = Jsoup.parse(html2).getElementsByTag("title").text();
-//		record.setFileName(filePath);
-//		record.setTitle(title);
-//
-//		lls.updateByPrimaryKey(record);
-//	}
-//
-//	private void insertLedLinkRecord(String link2) throws ClientProtocolException, IOException {
-//		insertLedLinkRecord(link2, HttpUtils.getHtml(link2));
-//	}
+	/**
+	 * to update the exsiting led recod thru link. 1.get the link info from the
+	 * record object 2.Download the html content from the link. 3.save html content
+	 * to a file and return the filePath 4.update the recod according to new
+	 * fileName and etc.
+	 * 
+	 * @param record
+	 * @throws ClientProtocolException
+	 * @throws IOException
+	 */
+	private void updateExistingRecord(LedLink record) throws ClientProtocolException, IOException {
+		String html2;
+		String link2 = record.getLink();
+
+		html2 = HttpUtils.getHtml(link2);
+
+		String filePath = storeContentToFile(link2, html2);
+		record.setFileName(filePath);
+
+		String title = Jsoup.parse(html2).getElementsByTag("title").text();
+		record.setFileName(filePath);
+		record.setTitle(title);
+
+		lls.updateByPrimaryKey(record);
+	}
+
+	private void insertLedLinkRecord(String link2) throws ClientProtocolException, IOException {
+		insertLedLinkRecord(link2, HttpUtils.getHtml(link2));
+	}
 
 }

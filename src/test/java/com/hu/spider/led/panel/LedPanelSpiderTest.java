@@ -38,7 +38,7 @@ public class LedPanelSpiderTest {
 	//要用mian 方法才能运行起来，不能用JUNIT测试方法。
 	public static void main(String[] args) {
 		
-		LedPanelSpider lps = new LedPanelSpider(root, level,OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks);
+		LedPanelSpider lps = new LedPanelSpider(root, level,OpeMode.UPDATE_MISSING_ONE_ONLY, allLinks);
 
 		ExecutorService es = Executors.newCachedThreadPool();
 
