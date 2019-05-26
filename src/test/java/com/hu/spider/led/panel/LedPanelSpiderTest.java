@@ -9,7 +9,7 @@ import org.junit.Test;
 
 public class LedPanelSpiderTest {
 
-	private static String root = "http://www.desayopto.cn/m5.html";
+//	private static String root = "http://www.desayopto.cn/m5.html";
 //	private static String root = "http://www.szlamp.cn/";
 //	private static String root = "http://47.99.14.21/ProductInfoCategory?categoryId=90828";
 //	private static String root = "http://47.99.14.21/productinfo/324082.html";
@@ -26,6 +26,7 @@ public class LedPanelSpiderTest {
 //	private static String root = "http://www.createled.cn/";
 //	private static String root = "https://www.yaham.com/pro_list.html?#c28"; // not succeed.
 //	private static String root = "http://www.newstar-led.com/";
+	private static String root = "http://www.newstar-led.com/p8-smd-led-screen";
 //	private static String root = "http://www.liantronics.com/index.html";
 //	private static String root = "http://www.vteam-lighting.cn/"; // not succeed.
 //	private static String root = "http://www.vteam-lighting.cn/ecodot.html";
@@ -37,7 +38,7 @@ public class LedPanelSpiderTest {
 	//要用mian 方法才能运行起来，不能用JUNIT测试方法。
 	public static void main(String[] args) {
 		
-		LedPanelSpider lps = new LedPanelSpider(root, level,OpeMode.CRAWL_UPDATE_ALL_LOGICALLY, allLinks);
+		LedPanelSpider lps = new LedPanelSpider(root, level,OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks);
 
 		ExecutorService es = Executors.newCachedThreadPool();
 
