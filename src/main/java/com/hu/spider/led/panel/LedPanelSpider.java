@@ -19,7 +19,6 @@ import com.hu.spider.led.service.LedLinkService;
 import com.hu.spider.led.service.impl.LedLinkServiceImpl;
 import com.hu.spider.led.vo.LedLink;
 import com.hu.spider.led.vo.LedLinkExample;
-import com.hu.spider.led.vo.LedLinkExample.Criteria;
 import com.hu.utils.httputils.HttpUtils;
 
 public class LedPanelSpider implements Runnable {
@@ -473,6 +472,11 @@ public class LedPanelSpider implements Runnable {
 
 	private void insertLedLinkRecord(String link2) throws ClientProtocolException, IOException {
 		insertLedLinkRecord(link2, HttpUtils.getHtml(link2));
+	}
+
+	@Override
+	public String toString() {
+		return "LedPanelSpider [link=" + link + ", curLevel=" + curLevel + ", opeMode=" + opeMode + "]";
 	}
 
 }
