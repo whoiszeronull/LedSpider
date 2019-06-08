@@ -2,18 +2,17 @@ package com.hu.spider.led.panel;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
-import org.junit.Test;
 import org.junit.platform.commons.util.StringUtils;
 
 import com.hu.utils.httputils.HttpUtils;
@@ -45,17 +44,26 @@ public class LedPanelSpiderTest {
 //	private static String root = "https://infiled.com/";
 
 	private static int level = 0;
-	private static Set<String> allLinks = new HashSet<>();
+	private static Set<String> allLinks = Collections.synchronizedSet(new HashSet<>());
 
 	// 要用mian 方法才能运行起来，不能用JUNIT测试方法。
-	public static void mainAA(String[] args) {
+	public static void main(String[] args) throws IOException {
 
-		LedPanelSpider lps = new LedPanelSpider(root, level, OpeMode.CRAWL_UPDATE_ALL_LOGICALLY, allLinks);
+		ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newFixedThreadPool(200);
+		LedPanelSpider.setEs(exe);
 
-		ExecutorService es = Executors.newCachedThreadPool();
+		Files.lines(Paths.get("google search results/respondingOnes-190530.txt"))
+				.map(e -> new LedPanelSpider(e, level, OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks))
+				.forEach(exe::execute);
+//		.forEach(System.out::println);
 
-		LedPanelSpider.setEs(es);
-		LedPanelSpider.getEs().execute(lps);
+		/*
+		 * //bellow for single spider test. LedPanelSpider lps = new
+		 * LedPanelSpider(root, level, OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks);
+		 * ThreadPoolExecutor exe = (ThreadPoolExecutor)
+		 * Executors.newFixedThreadPool(200); LedPanelSpider.setEs(exe);
+		 * LedPanelSpider.getEs().execute(lps);
+		 */
 
 	}
 
@@ -310,7 +318,7 @@ public class LedPanelSpiderTest {
 	// read the urls and verify the urls to double check whether it is responding or
 	// not, and save the good ones into one file, save the non-repsonding ones into
 	// the other file
-	@Test
+//	@Test
 	public void verifyURLsAndSaveIntoTwoGoodAndBadTXT() throws IOException, InterruptedException {
 		System.out.println("LedPanelSpiderTest.verifyURLsAndSaveIntoTwoGoodAndBadTXT()");
 		Set<String> respondingURLs = Collections.synchronizedSet(new HashSet<String>());
@@ -352,10 +360,9 @@ public class LedPanelSpiderTest {
 				System.out.println("current active threads: " + exe.getActiveCount());
 			}
 		});
-		
+
 		System.out.println("waiting..........................");
 		Thread.sleep(100000);
-
 
 		System.out.println("work done!!");
 		saveStringSetToFile(respondingURLs, respondingOnes);

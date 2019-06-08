@@ -9,6 +9,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.ClientProtocolException;
@@ -21,6 +23,11 @@ import com.hu.spider.led.vo.LedLink;
 import com.hu.spider.led.vo.LedLinkExample;
 import com.hu.utils.httputils.HttpUtils;
 
+/**
+ * 
+ * @author shunn
+ *
+ */
 public class LedPanelSpider implements Runnable {
 
 	private String link;
@@ -34,6 +41,9 @@ public class LedPanelSpider implements Runnable {
 
 	// the thread pool for running spiders
 	private static ExecutorService es;
+	
+	//the base directory for stroing the downlaoded html file content
+	private static String baseDir = "D:/LED spider/";
 
 	// the switch that determain whether to save the link and the html content
 	// belongs to this link to the database which already exisitng in the database.
@@ -47,6 +57,14 @@ public class LedPanelSpider implements Runnable {
 
 	public static final int MAX_LEVEL = 5;
 
+	/**
+	 * If there is no ExecutorService pass, then it will use ...bllablabla..
+	 * 
+	 * @param link
+	 * @param level
+	 * @param opeMode
+	 * @param alllinks
+	 */
 	public LedPanelSpider(String link, int level, OpeMode opeMode, Set<String> alllinks) {
 		super();
 		this.link = link;
@@ -57,6 +75,15 @@ public class LedPanelSpider implements Runnable {
 
 	public LedPanelSpider() {
 	};
+
+	public LedPanelSpider(String link, int level, OpeMode opeMode, ExecutorService es, Set<String> alllinks) {
+		super();
+		this.link = link;
+		this.curLevel = level;
+		this.allLinks = alllinks;
+		this.opeMode = opeMode;
+		LedPanelSpider.es = es;
+	}
 
 	@Override
 	public void run() {
@@ -108,7 +135,7 @@ public class LedPanelSpider implements Runnable {
 	}
 
 	/**
-	 * 1.scan the database for each ledLink record. 2.download the webpage file from
+	 * 1.scan the database for each ledLink record.  2.download the webpage file from
 	 * the existing link; 3.store the file to the products/hostname/pageformatted
 	 * name, and return the filepath. 4.update the existing ledLink record based on
 	 * the new filename(filePath)
@@ -206,7 +233,7 @@ public class LedPanelSpider implements Runnable {
 
 		List<LedLink> records = lls.selectByExample(lle);
 		for (LedLink ledLink : records) {
-			if(!(new File(ledLink.getFileName()).exists())) {
+			if (!(new File(ledLink.getFileName()).exists())) {
 				updateExistingRecord(ledLink);
 			}
 		}
@@ -310,7 +337,7 @@ public class LedPanelSpider implements Runnable {
 
 		String[] splits = link.split("/");
 		String fileName = splits[splits.length - 1];
-		return addPostFixDate("products/" + host + "/" + fileName);
+		return addPostFixDate(baseDir + "products/" + host + "/" + fileName);
 	}
 
 	// based on the given host name to filter out the links in the given string
@@ -320,7 +347,6 @@ public class LedPanelSpider implements Runnable {
 
 		Set<String> domainLinks = HttpUtils.filterDomainLinks(host, content);
 		for (String domainLink : domainLinks) {
-
 			if (!allLinks.contains(domainLink)) {
 				synchronized (Object.class) {
 					allLinks.add(domainLink);
@@ -387,7 +413,16 @@ public class LedPanelSpider implements Runnable {
 		this.allLinks = allLinks;
 	}
 
+	/**
+	 * if the Thread pool is null, then return a fixed-200 thread pool
+	 * @return
+	 */
 	public static ExecutorService getEs() {
+
+		if (es == null) {
+			return (ThreadPoolExecutor) Executors.newFixedThreadPool(200);
+		}
+
 		return es;
 	}
 
