@@ -2,6 +2,10 @@ package com.hu.spider.led.panel;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -14,7 +18,6 @@ import org.apache.commons.io.FileUtils;
 import org.junit.platform.commons.util.StringUtils;
 
 import com.hu.utils.httputils.HttpUtils;
-
 
 public class LedPanelSpiderTest {
 
@@ -50,23 +53,23 @@ public class LedPanelSpiderTest {
 
 		countingThread(10000);
 
-		/*
-		 * //read the host txt file for crawling. ThreadPoolExecutor exe =
-		 * (ThreadPoolExecutor) Executors.newFixedThreadPool(200);
-		 * LedPanelSpider.setEs(exe);
-		 * 
-		 * Files.lines(Paths.get("google search results/respondingOnes-190530.txt"))
-		 * .map(e -> new LedPanelSpider(e, level, OpeMode.CRAWL_UPDATE_MISSING_ONE,
-		 * allLinks)) .forEach(exe::execute); // .forEach(System.out::println);
-		 * 
-		 */
+		// read the host txt file for crawling.
+		ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newCachedThreadPool();
+		exe.setMaximumPoolSize(5000);
+		LedPanelSpider.setEs(exe);
+
+		Files.lines(Paths.get("google search results/respondingOnes-190530.txt"))
+				.map(e -> new LedPanelSpider(e, level, OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks))
+				.forEach(exe::execute);
 
 		
+		// ========================
 		// bellow for single spider test.
-		LedPanelSpider lps = new LedPanelSpider(root, level, OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks);
-		ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newCachedThreadPool(); //.newFixedThreadPool(200);
-		LedPanelSpider.setEs(exe);
-		LedPanelSpider.getEs().execute(lps);
+//		LedPanelSpider lps = new LedPanelSpider(root, level, OpeMode.CRAWL_UPDATE_MISSING_ONE, allLinks);
+//		ThreadPoolExecutor exe = (ThreadPoolExecutor) Executors.newCachedThreadPool(); // .newFixedThreadPool(200);
+//		LedPanelSpider.setEs(exe);
+//		LedPanelSpider.getEs().execute(lps);
+		//===================
 
 	}
 
@@ -74,12 +77,14 @@ public class LedPanelSpiderTest {
 	// on givien time interval, and displaying the msg on the console
 	private static void countingThread(int milis) {
 
-		new Thread(new Runnable() {
+		DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+		Thread t = new Thread(new Runnable() {
 
 			@Override
 			public void run() {
 				while (true) {
-					System.out.println("Approximate thread count: " + Thread.activeCount());
+					System.out.println(
+							LocalDateTime.now().format(dtf) + " > Approximate thread count: " + Thread.activeCount());
 					try {
 						Thread.sleep(milis);
 					} catch (InterruptedException e) {
@@ -87,7 +92,11 @@ public class LedPanelSpiderTest {
 					}
 				}
 			}
-		}).start();
+		});
+
+		t.setDaemon(true);
+
+		t.start();
 	}
 
 	// @Test

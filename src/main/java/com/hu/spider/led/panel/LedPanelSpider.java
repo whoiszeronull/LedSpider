@@ -215,6 +215,8 @@ public class LedPanelSpider implements Runnable {
 			html = HttpUtils.getHtml(link);
 			if (verifyContent(html)) {
 				insertLedLinkRecord(link, html);
+			}else {
+				System.out.println("the content downloaded doesn't pass verification, don't have product info: " + link);
 			}
 		}
 
