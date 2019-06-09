@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -15,6 +17,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.ClientProtocolException;
 import org.jsoup.Jsoup;
+import org.junit.platform.commons.util.StringUtils;
 
 import com.hu.parser.ledparser.verifier.impl.TextVerifier;
 import com.hu.spider.led.service.LedLinkService;
@@ -41,10 +44,13 @@ public class LedPanelSpider implements Runnable {
 
 	// the thread pool for running spiders
 	private static ExecutorService es;
-	
-	//the base directory for stroing the downlaoded html file content
+
+	// the base directory for stroing the downlaoded html file content and logs etc
 	private static String baseDir = "D:/LED spider/";
 
+	
+	private static String defaultCharset = "utf-8";
+	
 	// the switch that determain whether to save the link and the html content
 	// belongs to this link to the database which already exisitng in the database.
 	// true: means to update(replace) the html content which already exsiting in the
@@ -103,8 +109,9 @@ public class LedPanelSpider implements Runnable {
 			try {
 				crawlUpdateMissingOne();
 			} catch (Exception e) {
-				e.printStackTrace();
-				throw new RuntimeException(e);
+//				e.printStackTrace();
+//				throw new RuntimeException(e);
+				System.out.println(e.getMessage());
 			}
 			break;
 
@@ -135,7 +142,7 @@ public class LedPanelSpider implements Runnable {
 	}
 
 	/**
-	 * 1.scan the database for each ledLink record.  2.download the webpage file from
+	 * 1.scan the database for each ledLink record. 2.download the webpage file from
 	 * the existing link; 3.store the file to the products/hostname/pageformatted
 	 * name, and return the filepath. 4.update the existing ledLink record based on
 	 * the new filename(filePath)
@@ -175,12 +182,9 @@ public class LedPanelSpider implements Runnable {
 
 	}
 
-	private void crawlUpdateMissingOne() throws ClientProtocolException, IOException, InterruptedException {
+	private void crawlUpdateMissingOne() throws InterruptedException, ClientProtocolException, IOException {
 
 		ensureCrawlLevel();
-
-		html = HttpUtils.getHtml(link);
-
 		// 1.Get record from database based on the link info for checking.
 		LedLink record;
 		if ((record = getLedLinkRecord(link)) != null) {
@@ -188,15 +192,27 @@ public class LedPanelSpider implements Runnable {
 			// or
 			// not, if not then download the webpage file and store the file and update the
 			// ledLink .
-			if (!(new File(record.getFileName()).exists())) {
-				if (verifyContent(html)) {
-					updateExistingRecordThruLink(link, html);
-				}
+
+			try {
+				html = FileUtils.readFileToString(new File(record.getFileName()), defaultCharset);
+			} catch (IOException e) {
+				System.out.println("readed file not existing. For: " + link);
+				html = "";
 			}
+
+			if (!verifyContent(html)) {
+				System.out.println("the existing file doesnot pass verification, need to redownload!");
+				html = HttpUtils.getHtml(link);
+				updateExistingRecordThruLink(link, html);
+			} else {
+				System.out.println("stored file verify OK, no need to redownload. The file for : " + link);
+			}
+
 		} else {
 			// 3.If the link record not existing, then download the data file and strored
 			// and update the ledLink record.
 			// store the html content and return the stored file path
+			html = HttpUtils.getHtml(link);
 			if (verifyContent(html)) {
 				insertLedLinkRecord(link, html);
 			}
@@ -309,7 +325,7 @@ public class LedPanelSpider implements Runnable {
 		String filePath = generateFilePath(link);
 		File text = new File(filePath);
 
-		FileUtils.writeStringToFile(text, html, "utf-16");
+		FileUtils.writeStringToFile(text, html, defaultCharset);
 
 		return filePath;
 	}
@@ -415,6 +431,7 @@ public class LedPanelSpider implements Runnable {
 
 	/**
 	 * if the Thread pool is null, then return a fixed-200 thread pool
+	 * 
 	 * @return
 	 */
 	public static ExecutorService getEs() {
@@ -460,7 +477,7 @@ public class LedPanelSpider implements Runnable {
 //					String filePath = generateFilePath(link);
 	//
 //					try {
-//						FileUtils.writeStringToFile(new File(filePath), html, "utf-16", false);
+//						FileUtils.writeStringToFile(new File(filePath), html, defaultCharset, false);
 //					} catch (IOException e) {
 //						e.printStackTrace();
 //						throw new RuntimeException(e);
